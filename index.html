@@ -157,7 +157,6 @@
       border: 2px solid #ffffff;
       border-radius: 50%;
       box-shadow: 0 0 15px #00ffcc;
-      position: relative;
     }
     .custom-plane-icon {
       display: flex;
@@ -199,7 +198,7 @@
     <div id="sidebar">
       <div class="sidebar-header">
         <span>Air Traffic Feed</span>
-        <span id="feed-status" style="color: #00ffcc;">SCANNING...</span>
+        <span id="feed-status" style="color: #00ffcc;">CONNECTING...</span>
       </div>
       <div id="traffic-list"></div>
     </div>
@@ -315,43 +314,51 @@
 
     async function fetchTraffic() {
       var traffic = [];
-      var targetUrl = "https://api.adsb.one/v2/point/" + MOFFAT_LAT + "/" + MOFFAT_LON + "/50";
-      var proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(targetUrl);
-      var urls = [targetUrl, proxyUrl];
 
-      for (var i = 0; i < urls.length; i++) {
-        try {
-          var controller = new AbortController();
-          var timeoutId = setTimeout(function() { controller.abort(); }, 4000);
+      // 50 NM bounding box around Moffat (Lat: 55.332, Lon: -3.444)
+      var lamin = (MOFFAT_LAT - 0.83).toFixed(4);
+      var lamax = (MOFFAT_LAT + 0.83).toFixed(4);
+      var lomin = (MOFFAT_LON - 1.45).toFixed(4);
+      var lomax = (MOFFAT_LON + 1.45).toFixed(4);
 
-          var res = await fetch(urls[i], { signal: controller.signal });
-          clearTimeout(timeoutId);
+      var openskyUrl = "https://opensky-network.org/api/states/all?lamin=" + lamin + "&lomin=" + lomin + "&lamax=" + lamax + "&lomax=" + lomax;
+      var proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(openskyUrl);
 
-          if (res.ok) {
-            var data = await res.json();
-            var list = data.ac || data.aircraft || [];
-            if (Array.isArray(list) && list.length > 0) {
-              traffic = list.map(function(a) {
-                return {
-                  hex: a.hex,
-                  callsign: (a.flight || a.r || "UNKN").trim(),
-                  type: a.t || "ACFT",
-                  lat: a.lat,
-                  lon: a.lon,
-                  alt: a.alt_baro === "ground" ? 0 : (typeof a.alt_baro === 'number' ? a.alt_baro : (parseInt(a.alt_baro) || 0)),
-                  speed: Math.round(a.gs || 0),
-                  track: Math.round(a.track || 0),
-                  squawk: a.squawk || "----",
-                  dist: calculateDistance(MOFFAT_LAT, MOFFAT_LON, a.lat, a.lon)
-                };
-              }).filter(function(a) { return a.lat && a.lon; });
+      try {
+        var controller = new AbortController();
+        var timeoutId = setTimeout(function() { controller.abort(); }, 5000);
 
-              document.getElementById('feed-status').textContent = 'LIVE (ADSB.ONE)';
-              break;
-            }
+        var res = await fetch(proxyUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          var data = await res.json();
+          if (data && data.states && data.states.length > 0) {
+            traffic = data.states.map(function(s) {
+              var altFeet = s[7] ? Math.round(s[7] * 3.28084) : 0;
+              var speedKts = s[9] ? Math.round(s[9] * 1.94384) : 0;
+              var heading = s[10] ? Math.round(s[10]) : 0;
+              var lat = s[6];
+              var lon = s[5];
+
+              return {
+                hex: s[0],
+                callsign: (s[1] || s[0]).trim(),
+                type: "ACFT",
+                lat: lat,
+                lon: lon,
+                alt: altFeet,
+                speed: speedKts,
+                track: heading,
+                squawk: s[14] || "----",
+                dist: calculateDistance(MOFFAT_LAT, MOFFAT_LON, lat, lon)
+              };
+            }).filter(function(a) { return a.lat && a.lon; });
+
+            document.getElementById('feed-status').textContent = 'LIVE (OPENSKY)';
           }
-        } catch (err) {}
-      }
+        }
+      } catch (err) {}
 
       if (traffic.length === 0) {
         traffic = generateSimulatedTraffic();
@@ -384,7 +391,7 @@
         }
 
         var popupHtml = '<div style="font-size:0.85rem; line-height: 1.4;">' +
-          '<b style="color:#00ffcc; font-size:1rem;">' + ac.callsign + '</b> (' + ac.type + ')<br>' +
+          '<b style="color:#00ffcc; font-size:1rem;">' + ac.callsign + '</b><br>' +
           '<b>Altitude:</b> ' + ac.alt.toLocaleString() + ' ft<br>' +
           '<b>Speed:</b> ' + ac.speed + ' kts<br>' +
           '<b>Track:</b> ' + ac.track + '&deg;<br>' +
@@ -430,7 +437,7 @@
     }
 
     fetchTraffic();
-    setInterval(fetchTraffic, 6000);
+    setInterval(fetchTraffic, 10000);
   </script>
 </body>
 </html>
