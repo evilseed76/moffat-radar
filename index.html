@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Moffat Radar Scope</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #06090e;
+      color: #00ffcc;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    #app {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      height: 48px;
+      background: #0b1118;
+      border-bottom: 2px solid #00ffcc33;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      z-index: 1000;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand h1 {
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 1.1rem;
+      color: #00ffcc;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+    }
+    .badge {
+      background: rgba(0, 255, 204, 0.1);
+      border: 1px solid #00ffcc66;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 0.7rem;
+      color: #00ffcc;
+    }
+    .stats {
+      display: flex;
+      gap: 16px;
+      font-size: 0.75rem;
+    }
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+    .stat-label {
+      color: #627d98;
+      font-size: 0.6rem;
+      text-transform: uppercase;
+    }
+    .stat-val {
+      color: #f0f4f8;
+      font-weight: 600;
+    }
+    #main-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+    @media (min-width: 768px) {
+      #main-container {
+        flex-direction: row;
+      }
+    }
+    #map {
+      flex: 1;
+      width: 100%;
+      height: 55%;
+      background: #05080c;
+    }
+    @media (min-width: 768px) {
+      #map {
+        height: 100%;
+      }
+    }
+    #sidebar {
+      width: 100%;
+      height: 45%;
+      background: #0b1118ee;
+      border-top: 1px solid #00ffcc22;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      z-index: 1000;
+    }
+    @media (min-width: 768px) {
+      #sidebar {
+        width: 320px;
+        height: 100%;
+        border-top: none;
+        border-left: 1px solid #00ffcc22;
+      }
+    }
+    .sidebar-header {
+      height: 38px;
+      padding: 0 14px;
+      border-bottom: 1px solid #00ffcc22;
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 0.82rem;
+      color: #9fb3c8;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    #traffic-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+    .traffic-card {
+      background: #101822;
+      border: 1px solid #1f2d3d;
+      border-radius: 4px;
+      padding: 8px 10px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .traffic-card:hover {
+      border-color: #00ffcc66;
+      background: #14202e;
+    }
+    .traffic-card.selected {
+      border-color: #00ffcc;
+      background: #142636;
+    }
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .card-callsign {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #f0f4f8;
+    }
+    .card-alt {
+      font-size: 0.78rem;
+      color: #00ffcc;
+    }
+    .card-details {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      font-size: 0.7rem;
+      color: #829ab1;
+      row-gap: 2px;
+    }
+    .station-marker {
+      width: 14px;
+      height: 14px;
+      background: #00ffcc;
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      box-shadow: 0 0 15px #00ffcc;
+      position: relative;
+    }
+    .station-marker::after {
+      content: '';
+      position: absolute;
+      top: -10px;
+      left: -10px;
+      width: 30px;
+      height: 30px;
+      border: 1px solid #00ffcc;
+      border-radius: 50%;
+      animation: radar-ping 2s infinite ease-out;
+    }
+    @keyframes radar-ping {
+      0% { transform: scale(0.4); opacity: 1; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+    .custom-plane-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .leaflet-popup-content-wrapper {
+      background: #0b1118ee;
+      color: #f0f4f8;
+      border: 1px solid #00ffcc66;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .leaflet-popup-tip {
+      background: #0b1118ee;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="app">
+    <header>
+      <div class="brand">
+        <h1>Moffat Scope</h1>
+        <span class="badge">DG10 RADAR</span>
+      </div>
+      <div class="stats">
+        <div class="stat-item">
+          <span class="stat-label">Coverage</span>
+          <span class="stat-val">50 NM</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Tracked</span>
+          <span class="stat-val" id="target-count">0</span>
+        </div>
+      </div>
+    </header>
+
+    <div id="main-container">
+      <div id="map"></div>
+      <div id="sidebar">
+        <div class="sidebar-header">
+          <span>Air Traffic Feed</span>
+          <span id="feed-status" style="color: #00ffcc;">SCANNING...</span>
+        </div>
+        <div id="traffic-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+  <script>
+    const MOFFAT_LAT = 55.332;
+    const MOFFAT_LON = -3.444;
+
+    const map = L.map('map', {
+      zoomControl: false,
+      attributionControl: false
+    }).setView([MOFFAT_LAT, MOFFAT_LON], 9);
+
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 16
+    }).addTo(map);
+
+    setInterval(() => { map.invalidateSize(); }, 1000);
+
+    const stationIcon = L.divIcon({
+      className: '',
+      html: '<div class="station-marker"></div>',
+      iconSize: [14, 14],
+      iconAnchor: [7, 7]
+    });
+    L.marker([MOFFAT_LAT, MOFFAT_LON], { icon: stationIcon })
+      .bindTooltip("<b>MOFFAT RADAR</b>", { permanent: false, direction: 'top' })
+      .addTo(map);
+
+    const nmToMeters = 1852;
+    [10, 25, 50].forEach(range => {
+      L.circle([MOFFAT_LAT, MOFFAT_LON], {
+        radius: range * nmToMeters,
+        color: '#00ffcc',
+        weight: 1,
+        dashArray: '4, 8',
+        fill: false,
+        opacity: 0.25
+      }).addTo(map);
+    });
+
+    let aircraftMarkers = {};
+    let aircraftData = [];
+    let selectedHex = null;
+
+    function getAltColor(alt) {
+      if (alt < 10000) return '#00ff88';
+      if (alt < 25000) return '#00d0ff';
+      if (alt < 36000) return '#ffaa00';
+      return '#ff3366';
+    }
+
+    function createPlaneIcon(heading, alt) {
+      const color = getAltColor(alt);
+      const svg = `
+        <svg width="24" height="24" viewBox="0 0 24 24" style="transform: rotate(${heading}deg);">
+          <path fill="${color}" d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+        </svg>
+      `;
+      return L.divIcon({
+        className: 'custom-plane-icon',
+        html: svg,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+      });
+    }
+
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+      const R = 3440.065;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return (R * c).toFixed(1);
+    }
+
+    function generateSimulatedTraffic() {
+      const callsigns = [
+        { cs: "BAW294", type: "A359", alt: 37000, spd: 460, trk: 145, dLat: 0.4, dLon: 0.3 },
+        { cs: "EZY612", type: "A320", alt: 14200, spd: 280, trk: 320, dLat: -0.3, dLon: -0.2 },
+        { cs: "LOG88K", type: "AT76", alt: 6500,  spd: 210, trk: 10,  dLat: 0.1, dLon: -0.3 },
+        { cs: "QTR022", type: "B77W", alt: 35000, spd: 475, trk: 110, dLat: 0.5, dLon: 0.5 },
+        { cs: "VIPER1", type: "F18",  alt: 2500,  spd: 410, trk: 240, dLat: -0.15, dLon: 0.1 }
+      ];
+
+      return callsigns.map((item, idx) => {
+        const lat = MOFFAT_LAT + item.dLat + (Math.sin(Date.now() / 20000 + idx) * 0.05);
+        const lon = MOFFAT_LON + item.dLon + (Math.cos(Date.now() / 20000 + idx) * 0.05);
+        return {
+          hex: "43" + (1000 + idx),
+          callsign: item.cs,
+          type: item.type,
+          lat: lat,
+          lon: lon,
+          alt: item.alt,
+          speed: item.spd,
+          track: item.trk,
+          squawk: "7000",
+          dist: calculateDistance(MOFFAT_LAT, MOFFAT_LON, lat, lon)
+        };
+      });
+    }
+
+    async function fetchTraffic() {
+      let traffic = [];
+      const targetUrl = https://api.adsb.one/v2/point/${MOFFAT_LAT}/${MOFFAT_LON}/50;
+      const proxyUrl = https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)};
+
+      const urls = [targetUrl, proxyUrl];
+
+      for (const url of urls) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+          const res = await fetch(url, { signal: controller.signal });
+          clearTimeout(timeoutId);
+
+          if (res.ok) {
+            const data = await res.json();
+            const list = data.ac || data.aircraft || [];
+            if (Array.isArray(list) && list.length > 0) {
+              traffic = list.map(a => ({
+                hex: a.hex,
+                callsign: (a.flight || a.r || "UNKN").trim(),
+                type: a.t || "ACFT",
+                lat: a.lat,
+                lon: a.lon,
+                alt: a.alt_baro === "ground" ? 0 : (typeof a.alt_baro === 'number' ? a.alt_baro : (parseInt(a.alt_baro) || 0)),
+                speed: Math.round(a.gs || 0),
+                track: Math.round(a.track || 0),
+                squawk: a.squawk || "----",
+                dist: calculateDistance(MOFFAT_LAT, MOFFAT_LON, a.lat, a.lon)
+              })).filter(a => a.lat && a.lon);
+
+              document.getElementById('feed-status').textContent = 'LIVE (ADSB.ONE)';
+              break;
+            }
+          }
+        } catch (err) {}
+      }
+
+      if (traffic.length === 0) {
+        traffic = generateSimulatedTraffic();
+        document.getElementById('feed-status').textContent = 'SIMULATED BORDERS';
+      }
+
+      updateMapAndSidebar(traffic);
+    }
+
+    function updateMapAndSidebar(traffic) {
+      document.getElementById('target-count').textContent = traffic.length;
+      const listEl = document.getElementById('traffic-list');
+      listEl.innerHTML = '';
+
+      const currentHexes = new Set();
+
+      traffic.forEach(ac => {
+        currentHexes.add(ac.hex);
+
+        if (!aircraftMarkers[ac.hex]) {
+          const marker = L.marker([ac.lat, ac.lon], {
+            icon: createPlaneIcon(ac.track, ac.alt)
+          }).addTo(map);
+
+          marker.on('click', () => selectAircraft(ac.hex));
+          aircraftMarkers[ac.hex] = marker;
+        } else {
+          aircraftMarkers[ac.hex].setLatLng([ac.lat, ac.lon]);
+          aircraftMarkers[ac.hex].setIcon(createPlaneIcon(ac.track, ac.alt));
+        }
+
+        aircraftMarkers[ac.hex].bindPopup(`
+          <div style="font-size:0.85rem; line-height: 1.4;">
+            <b style="color:#00ffcc; font-size:1rem;">${ac.callsign}</b> (${ac.type})<br>
+            <b>Altitude:</b> ${ac.alt.toLocaleString()} ft<br>
+            <b>Speed:</b> ${ac.speed} kts<br>
+            <b>Track:</b> ${ac.track}°<br>
+            <b>Distance:</b> ${ac.dist} NM
+          </div>
+        `);
+
+        const card = document.createElement('div');
+        card.className = traffic-card ${selectedHex === ac.hex ? 'selected' : ''};
+        card.onclick = () => selectAircraft(ac.hex);
+        card.innerHTML = `
+          <div class="card-top">
+            <span class="card-callsign">${ac.callsign}</span>
+            <span class="card-alt" style="color:${getAltColor(ac.alt)}">${ac.alt.toLocaleString()} FT</span>
+          </div>
+          <div class="card-details">
+            <span>GS: ${ac.speed} KT</span>
+            <span>HDG: ${ac.track}°</span>
+            <span>TYPE: ${ac.type}</span>
+            <span>DIST: ${ac.dist} NM</span>
+          </div>
+        `;
+        listEl.appendChild(card);
+      });
+
+      Object.keys(aircraftMarkers).forEach(hex => {
+        if (!currentHexes.has(hex)) {
+          map.removeLayer(aircraftMarkers[hex]);
+          delete aircraftMarkers[hex];
+        }
+      });
+
+      aircraftData = traffic;
+    }
+
+    function selectAircraft(hex) {
+      selectedHex = hex;
+      const target = aircraftData.find(a => a.hex === hex);
+      if (target && aircraftMarkers[hex]) {
+        map.flyTo([target.lat, target.lon], 10, { animate: true, duration: 1 });
+        aircraftMarkers[hex].openPopup();
+      }
+      const cards = document.querySelectorAll('.traffic-card');
+      cards.forEach(c => c.classList.remove('selected'));
+    }
+
+    fetchTraffic();
+    setInterval(fetchTraffic, 6000);
+  </script>
+</body>
+</html>
