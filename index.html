@@ -9,169 +9,68 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
-      width: 100vw;
-      height: 100vh;
-      overflow: hidden;
-      background: #06090e;
-      color: #00ffcc;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      width: 100vw; height: 100vh; overflow: hidden;
+      background: #06090e; color: #00ffcc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
     #header {
-      width: 100%;
-      height: 48px;
-      background: #0b1118;
-      border-bottom: 2px solid #00ffcc33;
-      padding: 0 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      width: 100%; height: 48px; background: #0b1118;
+      border-bottom: 2px solid #00ffcc33; padding: 0 16px;
+      display: flex; align-items: center; justify-content: space-between;
       z-index: 1000;
     }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .brand h1 {
-      font-size: 1.1rem;
-      font-weight: 700;
-      color: #00ffcc;
-      letter-spacing: 1.2px;
-      text-transform: uppercase;
-    }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand h1 { font-size: 1.05rem; font-weight: 700; color: #00ffcc; letter-spacing: 1.2px; text-transform: uppercase; }
     .badge {
-      background: rgba(0, 255, 204, 0.1);
-      border: 1px solid #00ffcc66;
-      border-radius: 4px;
-      padding: 2px 6px;
-      font-size: 0.7rem;
-      color: #00ffcc;
+      background: rgba(0, 255, 204, 0.1); border: 1px solid #00ffcc66;
+      border-radius: 4px; padding: 2px 6px; font-size: 0.7rem; color: #00ffcc;
     }
-    .stats {
-      display: flex;
-      gap: 16px;
-      font-size: 0.75rem;
-    }
-    .stat-item {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-    }
-    .stat-label {
-      color: #627d98;
-      font-size: 0.6rem;
-      text-transform: uppercase;
-    }
-    .stat-val {
-      color: #f0f4f8;
-      font-weight: 600;
-    }
+    .stats { display: flex; gap: 14px; font-size: 0.75rem; }
+    .stat-item { display: flex; flex-direction: column; align-items: flex-end; }
+    .stat-label { color: #627d98; font-size: 0.6rem; text-transform: uppercase; }
+    .stat-val { color: #f0f4f8; font-weight: 600; }
     #main-container {
-      width: 100%;
-      height: calc(100vh - 48px);
-      display: flex;
-      flex-direction: row;
-      position: relative;
+      width: 100%; height: calc(100vh - 48px);
+      display: flex; flex-direction: column; position: relative;
     }
-    #map {
-      flex: 1;
-      height: 100%;
-      background: #05080c;
-    }
+    @media (min-width: 768px) { #main-container { flex-direction: row; } }
+    #map { flex: 1; width: 100%; height: 55%; background: #05080c; }
+    @media (min-width: 768px) { #map { height: 100%; } }
     #sidebar {
-      width: 320px;
-      height: 100%;
-      background: #0b1118ee;
-      border-left: 1px solid #00ffcc22;
-      display: flex;
-      flex-direction: column;
-      z-index: 1000;
+      width: 100%; height: 45%; background: #0b1118ee;
+      border-top: 1px solid #00ffcc22; display: flex; flex-direction: column; z-index: 1000;
+    }
+    @media (min-width: 768px) {
+      #sidebar { width: 320px; height: 100%; border-top: none; border-left: 1px solid #00ffcc22; }
     }
     .sidebar-header {
-      height: 40px;
-      padding: 0 14px;
-      border-bottom: 1px solid #00ffcc22;
-      font-size: 0.82rem;
-      font-weight: 600;
-      color: #9fb3c8;
-      text-transform: uppercase;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-shrink: 0;
+      height: 38px; padding: 0 14px; border-bottom: 1px solid #00ffcc22;
+      font-size: 0.8rem; font-weight: 600; color: #9fb3c8;
+      text-transform: uppercase; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
     }
-    #traffic-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 8px;
-    }
+    #traffic-list { flex: 1; overflow-y: auto; padding: 8px; }
     .traffic-card {
-      background: #101822;
-      border: 1px solid #1f2d3d;
-      border-radius: 4px;
-      padding: 8px 10px;
-      margin-bottom: 6px;
-      cursor: pointer;
-      transition: all 0.2s ease;
+      background: #101822; border: 1px solid #1f2d3d; border-radius: 4px;
+      padding: 8px 10px; margin-bottom: 6px; cursor: pointer; transition: all 0.2s ease;
     }
-    .traffic-card:hover {
-      border-color: #00ffcc66;
-      background: #14202e;
-    }
-    .traffic-card.selected {
-      border-color: #00ffcc;
-      background: #142636;
-    }
-    .card-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 4px;
-    }
-    .card-callsign {
-      font-size: 0.9rem;
-      font-weight: 600;
-      color: #f0f4f8;
-    }
-    .card-alt {
-      font-size: 0.78rem;
-      color: #00ffcc;
-    }
-    .card-details {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      font-size: 0.7rem;
-      color: #829ab1;
-      row-gap: 2px;
-    }
+    .traffic-card:hover { border-color: #00ffcc66; background: #14202e; }
+    .traffic-card.selected { border-color: #00ffcc; background: #142636; }
+    .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .card-callsign { font-size: 0.9rem; font-weight: 600; color: #f0f4f8; }
+    .card-alt { font-size: 0.78rem; color: #00ffcc; }
+    .card-details { display: grid; grid-template-columns: 1fr 1fr; font-size: 0.7rem; color: #829ab1; row-gap: 2px; }
     .station-marker {
-      width: 14px;
-      height: 14px;
-      background: #00ffcc;
-      border: 2px solid #ffffff;
-      border-radius: 50%;
-      box-shadow: 0 0 15px #00ffcc;
+      width: 14px; height: 14px; background: #00ffcc;
+      border: 2px solid #ffffff; border-radius: 50%; box-shadow: 0 0 15px #00ffcc;
     }
-    .custom-plane-icon {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+    .custom-plane-icon { display: flex; align-items: center; justify-content: center; }
     .leaflet-popup-content-wrapper {
-      background: #0b1118ee;
-      color: #f0f4f8;
-      border: 1px solid #00ffcc66;
-      border-radius: 6px;
+      background: #0b1118ee; color: #f0f4f8;
+      border: 1px solid #00ffcc66; border-radius: 6px;
     }
-    .leaflet-popup-tip {
-      background: #0b1118ee;
-    }
+    .leaflet-popup-tip { background: #0b1118ee; }
   </style>
 </head>
 <body>
@@ -198,7 +97,7 @@
     <div id="sidebar">
       <div class="sidebar-header">
         <span>Air Traffic Feed</span>
-        <span id="feed-status" style="color: #00ffcc;">CONNECTING...</span>
+        <span id="feed-status" style="color: #00ffcc;">INITIALIZING...</span>
       </div>
       <div id="traffic-list"></div>
     </div>
@@ -211,23 +110,15 @@
     var MOFFAT_LAT = 55.332;
     var MOFFAT_LON = -3.444;
 
-    var map = L.map('map', {
-      zoomControl: false,
-      attributionControl: false
-    }).setView([MOFFAT_LAT, MOFFAT_LON], 9);
-
+    var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([MOFFAT_LAT, MOFFAT_LON], 9);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 16
     }).addTo(map);
 
-    setTimeout(function() {
-      map.invalidateSize();
-    }, 200);
-    window.addEventListener('resize', function() {
-      map.invalidateSize();
-    });
+    setTimeout(function() { map.invalidateSize(); }, 250);
+    window.addEventListener('resize', function() { map.invalidateSize(); });
 
     var stationIcon = L.divIcon({
       className: '',
@@ -240,17 +131,16 @@
       .addTo(map);
 
     var nmToMeters = 1852;
-    var ranges = [10, 25, 50];
-    for (var r = 0; r < ranges.length; r++) {
+    [10, 25, 50].forEach(function(range) {
       L.circle([MOFFAT_LAT, MOFFAT_LON], {
-        radius: ranges[r] * nmToMeters,
+        radius: range * nmToMeters,
         color: '#00ffcc',
         weight: 1,
         dashArray: '4, 8',
         fill: false,
         opacity: 0.25
       }).addTo(map);
-    }
+    });
 
     var aircraftMarkers = {};
     var aircraftData = [];
@@ -285,84 +175,60 @@
       return (R * c).toFixed(1);
     }
 
-    function generateSimulatedTraffic() {
-      var callsigns = [
-        { cs: "BAW294", type: "A359", alt: 37000, spd: 460, trk: 145, dLat: 0.4, dLon: 0.3 },
-        { cs: "EZY612", type: "A320", alt: 14200, spd: 280, trk: 320, dLat: -0.3, dLon: -0.2 },
-        { cs: "LOG88K", type: "AT76", alt: 6500, spd: 210, trk: 10, dLat: 0.1, dLon: -0.3 },
-        { cs: "QTR022", type: "B77W", alt: 35000, spd: 475, trk: 110, dLat: 0.5, dLon: 0.5 },
-        { cs: "VIPER1", type: "F18", alt: 2500, spd: 410, trk: 240, dLat: -0.15, dLon: 0.1 }
-      ];
-
-      return callsigns.map(function(item, idx) {
-        var lat = MOFFAT_LAT + item.dLat + (Math.sin(Date.now() / 20000 + idx) * 0.05);
-        var lon = MOFFAT_LON + item.dLon + (Math.cos(Date.now() / 20000 + idx) * 0.05);
-        return {
-          hex: "43" + (1000 + idx),
-          callsign: item.cs,
-          type: item.type,
-          lat: lat,
-          lon: lon,
-          alt: item.alt,
-          speed: item.spd,
-          track: item.trk,
-          squawk: "7000",
-          dist: calculateDistance(MOFFAT_LAT, MOFFAT_LON, lat, lon)
-        };
-      });
-    }
-
     async function fetchTraffic() {
-      var traffic = [];
-
-      // 50 NM bounding box around Moffat (Lat: 55.332, Lon: -3.444)
       var lamin = (MOFFAT_LAT - 0.83).toFixed(4);
       var lamax = (MOFFAT_LAT + 0.83).toFixed(4);
       var lomin = (MOFFAT_LON - 1.45).toFixed(4);
       var lomax = (MOFFAT_LON + 1.45).toFixed(4);
 
-      var openskyUrl = "https://opensky-network.org/api/states/all?lamin=" + lamin + "&lomin=" + lomin + "&lamax=" + lamax + "&lomax=" + lomax;
-      var proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(openskyUrl);
+      var directOpenSky = "https://opensky-network.org/api/states/all?lamin=" + lamin + "&lomin=" + lomin + "&lamax=" + lamax + "&lomax=" + lomax;
+      var relayUrl = "https://api.codetabs.com/v1/proxy/?quest=" + encodeURIComponent(directOpenSky);
 
-      try {
-        var controller = new AbortController();
-        var timeoutId = setTimeout(function() { controller.abort(); }, 5000);
+      var traffic = [];
+      var endpoints = [
+        { url: directOpenSky, label: 'LIVE (OPENSKY)' },
+        { url: relayUrl, label: 'LIVE (RELAY)' }
+      ];
 
-        var res = await fetch(proxyUrl, { signal: controller.signal });
-        clearTimeout(timeoutId);
+      for (var i = 0; i < endpoints.length; i++) {
+        try {
+          var controller = new AbortController();
+          var timeoutId = setTimeout(function() { controller.abort(); }, 4000);
 
-        if (res.ok) {
-          var data = await res.json();
-          if (data && data.states && data.states.length > 0) {
-            traffic = data.states.map(function(s) {
-              var altFeet = s[7] ? Math.round(s[7] * 3.28084) : 0;
-              var speedKts = s[9] ? Math.round(s[9] * 1.94384) : 0;
-              var heading = s[10] ? Math.round(s[10]) : 0;
-              var lat = s[6];
-              var lon = s[5];
+          var res = await fetch(endpoints[i].url, { signal: controller.signal });
+          clearTimeout(timeoutId);
 
-              return {
-                hex: s[0],
-                callsign: (s[1] || s[0]).trim(),
-                type: "ACFT",
-                lat: lat,
-                lon: lon,
-                alt: altFeet,
-                speed: speedKts,
-                track: heading,
-                squawk: s[14] || "----",
-                dist: calculateDistance(MOFFAT_LAT, MOFFAT_LON, lat, lon)
-              };
-            }).filter(function(a) { return a.lat && a.lon; });
+          if (res.ok) {
+            var data = await res.json();
+            if (data && data.states && data.states.length > 0) {
+              traffic = data.states.map(function(s) {
+                var altFeet = s[7] ? Math.round(s[7] * 3.28084) : (s[13] ? Math.round(s[13] * 3.28084) : 0);
+                var speedKts = s[9] ? Math.round(s[9] * 1.94384) : 0;
+                var heading = s[10] ? Math.round(s[10]) : 0;
+                var lat = s[6];
+                var lon = s[5];
 
-            document.getElementById('feed-status').textContent = 'LIVE (OPENSKY)';
+                return {
+                  hex: s[0],
+                  callsign: (s[1] || s[0]).trim(),
+                  lat: lat,
+                  lon: lon,
+                  alt: altFeet,
+                  speed: speedKts,
+                  track: heading,
+                  dist: calculateDistance(MOFFAT_LAT, MOFFAT_LON, lat, lon)
+                };
+              }).filter(function(a) { return a.lat && a.lon; });
+
+              document.getElementById('feed-status').textContent = endpoints[i].label;
+              break;
+            }
           }
-        }
-      } catch (err) {}
+        } catch (err) {}
+      }
 
-      if (traffic.length === 0) {
-        traffic = generateSimulatedTraffic();
-        document.getElementById('feed-status').textContent = 'SIMULATED BORDERS';
+      if (traffic.length === 0 && aircraftData.length === 0) {
+        document.getElementById('feed-status').textContent = 'SCANNING SKY...';
       }
 
       updateMapAndSidebar(traffic);
@@ -409,7 +275,6 @@
           '<div class="card-details">' +
           '<span>GS: ' + ac.speed + ' KT</span>' +
           '<span>HDG: ' + ac.track + '&deg;</span>' +
-          '<span>TYPE: ' + ac.type + '</span>' +
           '<span>DIST: ' + ac.dist + ' NM</span>' +
           '</div>';
         listEl.appendChild(card);
