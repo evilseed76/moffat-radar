@@ -2,301 +2,144 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Moffat Radar Scope</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <title>Moffat Radar Scope | DG10</title>
 
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     html, body {
-      width: 100vw; height: 100vh; overflow: hidden;
-      background: #06090e; color: #00ffcc;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #06090e;
+      color: #00ffcc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
+
     #header {
-      width: 100%; height: 48px; background: #0b1118;
-      border-bottom: 2px solid #00ffcc33; padding: 0 16px;
-      display: flex; align-items: center; justify-content: space-between;
-      z-index: 1000;
+      width: 100%;
+      height: 50px;
+      background: #0b1118;
+      border-bottom: 2px solid rgba(0, 255, 204, 0.25);
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 100;
     }
-    .brand { display: flex; align-items: center; gap: 10px; }
-    .brand h1 { font-size: 1.05rem; font-weight: 700; color: #00ffcc; letter-spacing: 1.2px; text-transform: uppercase; }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .radar-pulse {
+      width: 10px;
+      height: 10px;
+      background: #00ffcc;
+      border-radius: 50%;
+      box-shadow: 0 0 10px #00ffcc;
+      animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.9); opacity: 0.7; }
+      50% { transform: scale(1.3); opacity: 1; box-shadow: 0 0 16px #00ffcc; }
+      100% { transform: scale(0.9); opacity: 0.7; }
+    }
+
+    .brand h1 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: #00ffcc;
+    }
+
     .badge {
-      background: rgba(0, 255, 204, 0.1); border: 1px solid #00ffcc66;
-      border-radius: 4px; padding: 2px 6px; font-size: 0.7rem; color: #00ffcc;
+      background: rgba(0, 255, 204, 0.1);
+      border: 1px solid rgba(0, 255, 204, 0.4);
+      border-radius: 4px;
+      padding: 2px 7px;
+      font-size: 0.7rem;
+      color: #00ffcc;
+      letter-spacing: 0.5px;
     }
-    .stats { display: flex; gap: 14px; font-size: 0.75rem; }
-    .stat-item { display: flex; flex-direction: column; align-items: flex-end; }
-    .stat-label { color: #627d98; font-size: 0.6rem; text-transform: uppercase; }
-    .stat-val { color: #f0f4f8; font-weight: 600; }
-    #main-container {
-      width: 100%; height: calc(100vh - 48px);
-      display: flex; flex-direction: column; position: relative;
+
+    .stats {
+      display: flex;
+      gap: 18px;
+      font-size: 0.75rem;
     }
-    @media (min-width: 768px) { #main-container { flex-direction: row; } }
-    #map { flex: 1; width: 100%; height: 55%; background: #05080c; }
-    @media (min-width: 768px) { #map { height: 100%; } }
-    #sidebar {
-      width: 100%; height: 45%; background: #0b1118ee;
-      border-top: 1px solid #00ffcc22; display: flex; flex-direction: column; z-index: 1000;
+
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
     }
-    @media (min-width: 768px) {
-      #sidebar { width: 320px; height: 100%; border-top: none; border-left: 1px solid #00ffcc22; }
+
+    .stat-label {
+      color: #627d98;
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
-    .sidebar-header {
-      height: 38px; padding: 0 14px; border-bottom: 1px solid #00ffcc22;
-      font-size: 0.8rem; font-weight: 600; color: #9fb3c8;
-      text-transform: uppercase; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+
+    .stat-val {
+      color: #f0f4f8;
+      font-weight: 600;
     }
-    #traffic-list { flex: 1; overflow-y: auto; padding: 8px; }
-    .traffic-card {
-      background: #101822; border: 1px solid #1f2d3d; border-radius: 4px;
-      padding: 8px 10px; margin-bottom: 6px; cursor: pointer; transition: all 0.2s ease;
+
+    #radar-container {
+      width: 100%;
+      height: calc(100vh - 50px);
+      position: relative;
+      background: #000;
     }
-    .traffic-card:hover { border-color: #00ffcc66; background: #14202e; }
-    .traffic-card.selected { border-color: #00ffcc; background: #142636; }
-    .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-    .card-callsign { font-size: 0.9rem; font-weight: 600; color: #f0f4f8; }
-    .card-alt { font-size: 0.78rem; color: #00ffcc; }
-    .card-details { display: grid; grid-template-columns: 1fr 1fr; font-size: 0.7rem; color: #829ab1; row-gap: 2px; }
-    .station-marker {
-      width: 14px; height: 14px; background: #00ffcc;
-      border: 2px solid #ffffff; border-radius: 50%; box-shadow: 0 0 15px #00ffcc;
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
     }
-    .custom-plane-icon { display: flex; align-items: center; justify-content: center; }
-    .leaflet-popup-content-wrapper {
-      background: #0b1118ee; color: #f0f4f8;
-      border: 1px solid #00ffcc66; border-radius: 6px;
-    }
-    .leaflet-popup-tip { background: #0b1118ee; }
   </style>
 </head>
 <body>
 
-  <div id="header">
+  <header id="header">
     <div class="brand">
+      <div class="radar-pulse"></div>
       <h1>Moffat Scope</h1>
       <span class="badge">DG10 RADAR</span>
     </div>
+
     <div class="stats">
       <div class="stat-item">
-        <span class="stat-label">Coverage</span>
-        <span class="stat-val">50 NM</span>
+        <span class="stat-label">Coverage Sector</span>
+        <span class="stat-val">55.33°N / -3.44°W</span>
       </div>
       <div class="stat-item">
-        <span class="stat-label">Tracked</span>
-        <span class="stat-val" id="target-count">0</span>
+        <span class="stat-label">Feed Status</span>
+        <span class="stat-val" style="color: #00ffcc;">LIVE (AVIOADSB)</span>
       </div>
     </div>
-  </div>
+  </header>
 
-  <div id="main-container">
-    <div id="map"></div>
-    <div id="sidebar">
-      <div class="sidebar-header">
-        <span>Air Traffic Feed</span>
-        <span id="feed-status" style="color: #00ffcc;">CONNECTING...</span>
-      </div>
-      <div id="traffic-list"></div>
-    </div>
-  </div>
+  <main id="radar-container">
+    <iframe 
+      src="https://avioadsb.org/embed/map?lat=55.33&amp;lon=-3.44&amp;zoom=8&amp;accent=00fbff"
+      title="Live flight tracker map by AvioADSB" 
+      loading="lazy" 
+      referrerpolicy="strict-origin-when-cross-origin">
+    </iframe>
+  </main>
 
-  <!-- Leaflet JS -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-
-  <script>
-    var MOFFAT_LAT = 55.332;
-    var MOFFAT_LON = -3.444;
-
-    var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([MOFFAT_LAT, MOFFAT_LON], 9);
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 16
-    }).addTo(map);
-
-    setTimeout(function() { map.invalidateSize(); }, 250);
-    window.addEventListener('resize', function() { map.invalidateSize(); });
-
-    var stationIcon = L.divIcon({
-      className: '',
-      html: '<div class="station-marker"></div>',
-      iconSize: [14, 14],
-      iconAnchor: [7, 7]
-    });
-    L.marker([MOFFAT_LAT, MOFFAT_LON], { icon: stationIcon })
-      .bindTooltip("MOFFAT RADAR", { permanent: false, direction: 'top' })
-      .addTo(map);
-
-    var nmToMeters = 1852;
-    [10, 25, 50].forEach(function(range) {
-      L.circle([MOFFAT_LAT, MOFFAT_LON], {
-        radius: range * nmToMeters,
-        color: '#00ffcc',
-        weight: 1,
-        dashArray: '4, 8',
-        fill: false,
-        opacity: 0.25
-      }).addTo(map);
-    });
-
-    var aircraftMarkers = {};
-    var aircraftData = [];
-    var selectedHex = null;
-
-    function getAltColor(alt) {
-      if (alt < 10000) return '#00ff88';
-      if (alt < 25000) return '#00d0ff';
-      if (alt < 36000) return '#ffaa00';
-      return '#ff3366';
-    }
-
-    function createPlaneIcon(heading, alt) {
-      var color = getAltColor(alt);
-      var svg = '<svg width="24" height="24" viewBox="0 0 24 24" style="transform: rotate(' + heading + 'deg);"><path fill="' + color + '" d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>';
-      return L.divIcon({
-        className: 'custom-plane-icon',
-        html: svg,
-        iconSize: [24, 24],
-        iconAnchor: [12, 12]
-      });
-    }
-
-    function calculateDistance(lat1, lon1, lat2, lon2) {
-      var R = 3440.065;
-      var dLat = (lat2 - lat1) * Math.PI / 180;
-      var dLon = (lon2 - lon1) * Math.PI / 180;
-      var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLon/2) * Math.sin(dLon/2);
-      var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      return (R * c).toFixed(1);
-    }
-
-    async function fetchTraffic() {
-      var lamin = (MOFFAT_LAT - 0.83).toFixed(4);
-      var lamax = (MOFFAT_LAT + 0.83).toFixed(4);
-      var lomin = (MOFFAT_LON - 1.45).toFixed(4);
-      var lomax = (MOFFAT_LON + 1.45).toFixed(4);
-
-      var fr24Url = "https://data-cloud.flightradar24.com/zones/fcgi/feed.js?bounds=" + 
-                    lamax + "," + lamin + "," + lomin + "," + lomax + 
-                    "&faa=1&satellite=1&mlat=1&flarm=1&adsb=1&gnd=0&air=1&vehicles=0&estimated=1";
-
-      try {
-        var res = await fetch(fr24Url);
-        if (res.ok) {
-          var data = await res.json();
-          var traffic = [];
-
-          for (var key in data) {
-            if (Array.isArray(data[key])) {
-              var p = data[key];
-              var lat = p[1];
-              var lon = p[2];
-              var track = p[3] || 0;
-              var alt = p[4] || 0;
-              var speed = p[5] || 0;
-              var callsign = (p[16] || p[13] || key).trim();
-              var type = p[8] || "ACFT";
-
-              traffic.push({
-                hex: key,
-                callsign: callsign,
-                type: type,
-                lat: lat,
-                lon: lon,
-                alt: alt,
-                speed: speed,
-                track: track,
-                dist: calculateDistance(MOFFAT_LAT, MOFFAT_LON, lat, lon)
-              });
-            }
-          }
-
-          document.getElementById('feed-status').textContent = 'LIVE (FR24)';
-          updateMapAndSidebar(traffic);
-          return;
-        }
-      } catch (err) {
-        console.warn("Feed error:", err);
-      }
-
-      document.getElementById('feed-status').textContent = 'SCANNING SKY...';
-      updateMapAndSidebar([]);
-    }
-
-    function updateMapAndSidebar(traffic) {
-      document.getElementById('target-count').textContent = traffic.length;
-      var listEl = document.getElementById('traffic-list');
-      listEl.innerHTML = '';
-
-      var currentHexes = new Set();
-
-      traffic.forEach(function(ac) {
-        currentHexes.add(ac.hex);
-
-        if (!aircraftMarkers[ac.hex]) {
-          var marker = L.marker([ac.lat, ac.lon], {
-            icon: createPlaneIcon(ac.track, ac.alt)
-          }).addTo(map);
-
-          marker.on('click', function() { selectAircraft(ac.hex); });
-          aircraftMarkers[ac.hex] = marker;
-        } else {
-          aircraftMarkers[ac.hex].setLatLng([ac.lat, ac.lon]);
-          aircraftMarkers[ac.hex].setIcon(createPlaneIcon(ac.track, ac.alt));
-        }
-
-        var popupHtml = '<div style="font-size:0.85rem; line-height: 1.4;">' +
-          '<b style="color:#00ffcc; font-size:1rem;">' + ac.callsign + '</b><br>' +
-          '<b>Altitude:</b> ' + ac.alt.toLocaleString() + ' ft<br>' +
-          '<b>Speed:</b> ' + ac.speed + ' kts<br>' +
-          '<b>Track:</b> ' + ac.track + '&deg;<br>' +
-          '<b>Distance:</b> ' + ac.dist + ' NM' +
-          '</div>';
-        aircraftMarkers[ac.hex].bindPopup(popupHtml);
-
-        var card = document.createElement('div');
-        card.className = 'traffic-card' + (selectedHex === ac.hex ? ' selected' : '');
-        card.onclick = function() { selectAircraft(ac.hex); };
-        card.innerHTML = '<div class="card-top">' +
-          '<span class="card-callsign">' + ac.callsign + '</span>' +
-          '<span class="card-alt" style="color:' + getAltColor(ac.alt) + '">' + ac.alt.toLocaleString() + ' FT</span>' +
-          '</div>' +
-          '<div class="card-details">' +
-          '<span>GS: ' + ac.speed + ' KT</span>' +
-          '<span>HDG: ' + ac.track + '&deg;</span>' +
-          '<span>DIST: ' + ac.dist + ' NM</span>' +
-          '</div>';
-        listEl.appendChild(card);
-      });
-
-      Object.keys(aircraftMarkers).forEach(function(hex) {
-        if (!currentHexes.has(hex)) {
-          map.removeLayer(aircraftMarkers[hex]);
-          delete aircraftMarkers[hex];
-        }
-      });
-
-      aircraftData = traffic;
-    }
-
-    function selectAircraft(hex) {
-      selectedHex = hex;
-      var target = aircraftData.find(function(a) { return a.hex === hex; });
-      if (target && aircraftMarkers[hex]) {
-        map.flyTo([target.lat, target.lon], 10, { animate: true, duration: 1 });
-        aircraftMarkers[hex].openPopup();
-      }
-      var cards = document.querySelectorAll('.traffic-card');
-      cards.forEach(function(c) { c.classList.remove('selected'); });
-    }
-
-    fetchTraffic();
-    setInterval(fetchTraffic, 10000);
-  </script>
 </body>
 </html>
