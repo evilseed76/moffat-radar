@@ -97,7 +97,7 @@
     <div id="sidebar">
       <div class="sidebar-header">
         <span>Air Traffic Feed</span>
-        <span id="feed-status" style="color: #00ffcc;">INITIALIZING...</span>
+        <span id="feed-status" style="color: #00ffcc;">CONNECTING...</span>
       </div>
       <div id="traffic-list"></div>
     </div>
@@ -176,65 +176,40 @@
     }
 
     async function fetchTraffic() {
-      var lamin = (MOFFAT_LAT - 0.83).toFixed(4);
-      var lamax = (MOFFAT_LAT + 0.83).toFixed(4);
-      var lomin = (MOFFAT_LON - 1.45).toFixed(4);
-      var lomax = (MOFFAT_LON + 1.45).toFixed(4);
+      // 50 NM coverage = 93 km radius
+      var url = "https://api.airplanes.live/v2/point/" + MOFFAT_LAT + "/" + MOFFAT_LON + "/93";
 
-      var openSkyTarget = "https://opensky-network.org/api/states/all?lamin=" + lamin + "&lomin=" + lomin + "&lamax=" + lamax + "&lomax=" + lomax;
+      try {
+        var res = await fetch(url);
+        if (res.ok) {
+          var data = await res.json();
+          if (data && data.ac) {
+            var traffic = data.ac.map(function(a) {
+              return {
+                hex: a.hex,
+                callsign: (a.flight || a.hex || "UNKNOWN").trim(),
+                type: a.t || "ACFT",
+                lat: a.lat,
+                lon: a.lon,
+                alt: a.alt_baro === "ground" ? 0 : (a.alt_baro || a.alt_geom || 0),
+                speed: Math.round(a.gs || 0),
+                track: Math.round(a.track || 0),
+                squawk: a.squawk || "----",
+                dist: calculateDistance(MOFFAT_LAT, MOFFAT_LON, a.lat, a.lon)
+              };
+            }).filter(function(a) { return a.lat && a.lon; });
 
-      // Proxies that strip CORS restrictions so GitHub Pages can read the response
-      var proxies = [
-        "https://corsproxy.io/?" + encodeURIComponent(openSkyTarget),
-        "https://api.allorigins.win/raw?url=" + encodeURIComponent(openSkyTarget)
-      ];
-
-      var traffic = [];
-
-      for (var i = 0; i < proxies.length; i++) {
-        try {
-          var controller = new AbortController();
-          var timeoutId = setTimeout(function() { controller.abort(); }, 5000);
-
-          var res = await fetch(proxies[i], { signal: controller.signal });
-          clearTimeout(timeoutId);
-
-          if (res.ok) {
-            var data = await res.json();
-            if (data && data.states && data.states.length > 0) {
-              traffic = data.states.map(function(s) {
-                var altFeet = s[7] ? Math.round(s[7] * 3.28084) : (s[13] ? Math.round(s[13] * 3.28084) : 0);
-                var speedKts = s[9] ? Math.round(s[9] * 1.94384) : 0;
-                var heading = s[10] ? Math.round(s[10]) : 0;
-                var lat = s[6];
-                var lon = s[5];
-
-                return {
-                  hex: s[0],
-                  callsign: (s[1] || s[0]).trim(),
-                  lat: lat,
-                  lon: lon,
-                  alt: altFeet,
-                  speed: speedKts,
-                  track: heading,
-                  dist: calculateDistance(MOFFAT_LAT, MOFFAT_LON, lat, lon)
-                };
-              }).filter(function(a) { return a.lat && a.lon; });
-
-              document.getElementById('feed-status').textContent = 'LIVE (OPENSKY)';
-              break;
-            }
+            document.getElementById('feed-status').textContent = 'LIVE (AIRPLANES.LIVE)';
+            updateMapAndSidebar(traffic);
+            return;
           }
-        } catch (e) {
-          console.warn("Proxy attempt failed, trying next...", e);
         }
+      } catch (err) {
+        console.warn("Direct fetch error:", err);
       }
 
-      if (traffic.length === 0) {
-        document.getElementById('feed-status').textContent = 'SCANNING SKY...';
-      }
-
-      updateMapAndSidebar(traffic);
+      document.getElementById('feed-status').textContent = 'SCANNING SKY...';
+      updateMapAndSidebar([]);
     }
 
     function updateMapAndSidebar(traffic) {
