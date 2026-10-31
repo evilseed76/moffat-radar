@@ -181,21 +181,22 @@
       var lomin = (MOFFAT_LON - 1.45).toFixed(4);
       var lomax = (MOFFAT_LON + 1.45).toFixed(4);
 
-      var directOpenSky = "https://opensky-network.org/api/states/all?lamin=" + lamin + "&lomin=" + lomin + "&lamax=" + lamax + "&lomax=" + lomax;
-      var relayUrl = "https://api.codetabs.com/v1/proxy/?quest=" + encodeURIComponent(directOpenSky);
+      var openSkyTarget = "https://opensky-network.org/api/states/all?lamin=" + lamin + "&lomin=" + lomin + "&lamax=" + lamax + "&lomax=" + lomax;
 
-      var traffic = [];
-      var endpoints = [
-        { url: directOpenSky, label: 'LIVE (OPENSKY)' },
-        { url: relayUrl, label: 'LIVE (RELAY)' }
+      // Proxies that strip CORS restrictions so GitHub Pages can read the response
+      var proxies = [
+        "https://corsproxy.io/?" + encodeURIComponent(openSkyTarget),
+        "https://api.allorigins.win/raw?url=" + encodeURIComponent(openSkyTarget)
       ];
 
-      for (var i = 0; i < endpoints.length; i++) {
+      var traffic = [];
+
+      for (var i = 0; i < proxies.length; i++) {
         try {
           var controller = new AbortController();
-          var timeoutId = setTimeout(function() { controller.abort(); }, 4000);
+          var timeoutId = setTimeout(function() { controller.abort(); }, 5000);
 
-          var res = await fetch(endpoints[i].url, { signal: controller.signal });
+          var res = await fetch(proxies[i], { signal: controller.signal });
           clearTimeout(timeoutId);
 
           if (res.ok) {
@@ -220,14 +221,16 @@
                 };
               }).filter(function(a) { return a.lat && a.lon; });
 
-              document.getElementById('feed-status').textContent = endpoints[i].label;
+              document.getElementById('feed-status').textContent = 'LIVE (OPENSKY)';
               break;
             }
           }
-        } catch (err) {}
+        } catch (e) {
+          console.warn("Proxy attempt failed, trying next...", e);
+        }
       }
 
-      if (traffic.length === 0 && aircraftData.length === 0) {
+      if (traffic.length === 0) {
         document.getElementById('feed-status').textContent = 'SCANNING SKY...';
       }
 
