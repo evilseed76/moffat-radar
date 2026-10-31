@@ -176,13 +176,11 @@
     }
 
     async function fetchTraffic() {
-      // 50 NM bounding box centered on Moffat (55.332, -3.444)
       var lamin = (MOFFAT_LAT - 0.83).toFixed(4);
       var lamax = (MOFFAT_LAT + 0.83).toFixed(4);
       var lomin = (MOFFAT_LON - 1.45).toFixed(4);
       var lomax = (MOFFAT_LON + 1.45).toFixed(4);
 
-      // FR24 live regional JSON endpoint (CORS-permissive across all browsers)
       var fr24Url = "https://data-cloud.flightradar24.com/zones/fcgi/feed.js?bounds=" + 
                     lamax + "," + lamin + "," + lomin + "," + lomax + 
                     "&faa=1&satellite=1&mlat=1&flarm=1&adsb=1&gnd=0&air=1&vehicles=0&estimated=1";
@@ -193,7 +191,6 @@
           var data = await res.json();
           var traffic = [];
 
-          // Format is a key-value object where keys are aircraft hexes
           for (var key in data) {
             if (Array.isArray(data[key])) {
               var p = data[key];
@@ -224,12 +221,14 @@
           return;
         }
       } catch (err) {
-        console.warn("Live feed check:", err);
+        console.warn("Feed error:", err);
       }
 
       document.getElementById('feed-status').textContent = 'SCANNING SKY...';
       updateMapAndSidebar([]);
     }
+
+    function updateMapAndSidebar(traffic) {
       document.getElementById('target-count').textContent = traffic.length;
       var listEl = document.getElementById('traffic-list');
       listEl.innerHTML = '';
