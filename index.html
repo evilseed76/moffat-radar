@@ -176,43 +176,60 @@
     }
 
     async function fetchTraffic() {
-      // 50 NM coverage = 93 km radius
-      var url = "https://api.airplanes.live/v2/point/" + MOFFAT_LAT + "/" + MOFFAT_LON + "/93";
+      // 50 NM bounding box centered on Moffat (55.332, -3.444)
+      var lamin = (MOFFAT_LAT - 0.83).toFixed(4);
+      var lamax = (MOFFAT_LAT + 0.83).toFixed(4);
+      var lomin = (MOFFAT_LON - 1.45).toFixed(4);
+      var lomax = (MOFFAT_LON + 1.45).toFixed(4);
+
+      // FR24 live regional JSON endpoint (CORS-permissive across all browsers)
+      var fr24Url = "https://data-cloud.flightradar24.com/zones/fcgi/feed.js?bounds=" + 
+                    lamax + "," + lamin + "," + lomin + "," + lomax + 
+                    "&faa=1&satellite=1&mlat=1&flarm=1&adsb=1&gnd=0&air=1&vehicles=0&estimated=1";
 
       try {
-        var res = await fetch(url);
+        var res = await fetch(fr24Url);
         if (res.ok) {
           var data = await res.json();
-          if (data && data.ac) {
-            var traffic = data.ac.map(function(a) {
-              return {
-                hex: a.hex,
-                callsign: (a.flight || a.hex || "UNKNOWN").trim(),
-                type: a.t || "ACFT",
-                lat: a.lat,
-                lon: a.lon,
-                alt: a.alt_baro === "ground" ? 0 : (a.alt_baro || a.alt_geom || 0),
-                speed: Math.round(a.gs || 0),
-                track: Math.round(a.track || 0),
-                squawk: a.squawk || "----",
-                dist: calculateDistance(MOFFAT_LAT, MOFFAT_LON, a.lat, a.lon)
-              };
-            }).filter(function(a) { return a.lat && a.lon; });
+          var traffic = [];
 
-            document.getElementById('feed-status').textContent = 'LIVE (AIRPLANES.LIVE)';
-            updateMapAndSidebar(traffic);
-            return;
+          // Format is a key-value object where keys are aircraft hexes
+          for (var key in data) {
+            if (Array.isArray(data[key])) {
+              var p = data[key];
+              var lat = p[1];
+              var lon = p[2];
+              var track = p[3] || 0;
+              var alt = p[4] || 0;
+              var speed = p[5] || 0;
+              var callsign = (p[16] || p[13] || key).trim();
+              var type = p[8] || "ACFT";
+
+              traffic.push({
+                hex: key,
+                callsign: callsign,
+                type: type,
+                lat: lat,
+                lon: lon,
+                alt: alt,
+                speed: speed,
+                track: track,
+                dist: calculateDistance(MOFFAT_LAT, MOFFAT_LON, lat, lon)
+              });
+            }
           }
+
+          document.getElementById('feed-status').textContent = 'LIVE (FR24)';
+          updateMapAndSidebar(traffic);
+          return;
         }
       } catch (err) {
-        console.warn("Direct fetch error:", err);
+        console.warn("Live feed check:", err);
       }
 
       document.getElementById('feed-status').textContent = 'SCANNING SKY...';
       updateMapAndSidebar([]);
     }
-
-    function updateMapAndSidebar(traffic) {
       document.getElementById('target-count').textContent = traffic.length;
       var listEl = document.getElementById('traffic-list');
       listEl.innerHTML = '';
